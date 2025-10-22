@@ -89,7 +89,20 @@ def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") ->
 
 # classes
 class Asset: # subclass to be used only under Market
-    pass    
+    def __init__(self, name, base, vol, trend):
+        self.name = name
+        self.price = base
+        self.vol = vol
+        self.trend = trend
+        self.last_change = 0
+        
+    def update(self, temp, stability):
+        delta = self.trend + random.gauss(0, self.vol)
+        instability = (1 - stability)
+        change = delta + temp * instability
+        old = self.price
+        self.price = max(0.1, self.price * (1 + change))
+        self.last_change = self.price - old
     
 class Market:
     pass
