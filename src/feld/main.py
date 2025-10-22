@@ -87,16 +87,43 @@ def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") ->
             chars[i] = random.choice(glitch_characters)
     return "".join(chars)
 
-
-# balala
+# classes
+class Asset: # subclass to be used only under Market
+    pass    
+    
+class Market:
+    pass
+    
 class Player:
     pass
 
-def init():
-    print(format_text("This is good text", ["bold", (False, 80, 255, 220), (True, 20, 30, 60)]))
+# logic
+def handle_buy(player, market, arg):
+    pass
 
-def entry():
-    init()
+def handle_sell(player, market, arg):
+    pass
+
+def handle_supplies(player):
+    pass
+
+def show_status(player, market):
+    pass
+
+def get_technobabble(stability):
+    pass
+
+def game_end(player, market):
+    pass
+
+# loop
+def main():
+    print(format_text("This is good text", ["bold", (False, 80, 255, 220), (True, 20, 30, 60)]))
+    while(True):
+        pass
 
 if __name__ == "__main__":
-    entry()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(format_text("test", ["bold", (False, 255, 80, 80), "bold", "underline"]))
