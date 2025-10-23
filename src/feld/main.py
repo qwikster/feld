@@ -2,9 +2,11 @@ import sys
 import os
 import time
 import random
+import math
 
 # config
 START_LUX = 10000 # remember, lux is the currency
+STABILITY_DECAY = 0.01
 
 # utility
 def clear(): 
@@ -87,14 +89,44 @@ def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") ->
             chars[i] = random.choice(glitch_characters)
     return "".join(chars)
 
+GRAPH_CHARS = "▁▂▃▄▅▆▇█"
+def sparkline(history, width = 20):
+    if not history:
+        return ""
+    
+    vals = history[-width:]
+    lo, hi = min(vals), max(vals)
+    if hi - lo < 1e-6:
+        return "".join(format_text(GRAPH_CHARS[0], ["bright_cyan"]) for _ in vals)
+    
+    span = hi-lo
+    scaled = [(v - lo) / span for v in vals]
+    
+    parts = []
+    for i, s in enumerate(scaled):
+        ch = GRAPH_CHARS[int(s * (len(GRAPH_CHARS) - 1))]
+        if i == 0:
+            color = "bright_cyan"
+        else:
+            diff = vals[i] - vals[i - 1]
+            if diff > 0.1:
+                color = "bright_green"
+            elif diff < -0.1:
+                color = "bright_red"
+            else:
+                color = "bright_cyan"
+        parts.append(format_text(ch, [color]))
+        
+    return "".join(parts)
+
 # classes
 class Asset: # subclass to be used only under Market
-    def __init__(self, name, base, vol, trend):
-        self.name = name
-        self.price = base
-        self.vol = vol
-        self.trend = trend
-        self.last_change = 0
+    def __init__(self, name, base, volatility, trend):
+        self.name = name      # Name of asset
+        self.price = base     # Base (starting) price
+        self.vol = volatility # Standard deviation on random
+        self.trend = trend    # Trend directional drift
+        self.last_change = 0  # For stock tracker
         
     def update(self, temp, stability):
         delta = self.trend + random.gauss(0, self.vol)
@@ -105,7 +137,30 @@ class Asset: # subclass to be used only under Market
         self.last_change = self.price - old
     
 class Market:
-    pass
+    def __init__(self):
+        self.assets = [ # TODO: Add json parsing here
+            Asset("Helios Corp.", 100, -0.02, -0.001), # TODO: Trend should be random maybe?
+            Asset("Photonic Semiconductors Limited", 40, 0.06, -0.002), # TODO: Add more asset types obviously
+            Asset("Ionic Compound Manufacturers", 30, 0.0, 0.0)
+        ] 
+        self.stability = 1.0
+        self.temp = 0.0
+        self.cycle = 0
+    
+    def tick(self):
+        for a in self.assets:
+            a.update(self.temp, self.stability)
+        self.stability = max(0, self.stability - STABILITY_DECAY)
+        self.temp += random.uniform(-0.01, 0.02)
+        self.cycle += 1
+        
+    def summary(self):
+        print(format_text(f"\n[Market Stability: {self.stability:.2f}]   [Cycle {self.cycle}]\n", ["bright_cyan"]))
+        for a in self.assets:
+            col = "bright_green" if a.last_change > 0 else "bright_red" if a.last_change < 0 else "bright_cyan"
+            sym = "⌃" if a.last_change > 0 else "⌄" if a.last_change < 0 else "~"
+            print(f"{a.name:32} | {format_text(f"{sym} {a.last_change:5.2f}", [col])}", format_text(f"(Ⱡ{a.price:.2f})", [col]))
+        
     
 class Player:
     pass
@@ -131,10 +186,12 @@ def game_end(player, market):
 
 # loop
 def main():
-    print(format_text("This is good text", ["bold", (False, 80, 255, 220), (True, 20, 30, 60)]))
+    market = Market()
     while(True):
-        pass
-
+        market.summary()
+        market.tick()
+        time.sleep(0.02)
+    
 if __name__ == "__main__":
     try:
         main()
