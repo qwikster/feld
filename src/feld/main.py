@@ -172,11 +172,18 @@ class Asset: # subclass to be used only under Market
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
-            Asset("Helios Corp.", 100, -0.02, -0.001), # TODO: Trend should be random maybe?
-            Asset("Photonic Semiconductors Limited", 40, 0.06, -0.002), # TODO: Add more asset types obviously
-            Asset("Ionic Compound Manufacturers", 30, 0.0, 0.0),
-            Asset("ClosedAI", 200, 0.8, -0.3)
-        ] 
+            Asset("Helios Corp.", 8000, -0.02, -0.001), # TODO: Trend should be random maybe?
+            Asset("MacroHard", 1111, 0.0, -0.0005),
+            Asset("Michaelsoft Binbows", 2422, 0.0, -0.1),
+            Asset("Ionic Compound Manufacturers", 3500, 0.0, 0.0),
+            Asset("ClosedAI", 10000, -0.3, -1),
+            Asset("Photonic Semiconductors Limited", 4200, 0.06, -0.002),
+            Asset("Super Earth Warbonds", 6969, -0.04, -0.003),
+            Asset("Lithium Mining Associates", 5000, 0.2, -0.09),
+            Asset("Tux", 10, 0.0, 0.5),
+            Asset("Richard Bored Private Reserve", 1000, -0.1, 0.0),
+            Asset("FICSIT, INC.", 4242, 0.1, -0.1)
+        ]
         self.cycle = 0
         self.total_initial = sum(a.price for a in self.assets)
     
@@ -192,7 +199,7 @@ class Market:
         
         total = sum(a.price for a in self.assets)
         target = self.total_initial * stability
-        if total > 0:
+        if False:
             scale = target / total
             for a in self.assets:
                 a.price *= scale
@@ -211,8 +218,12 @@ class Market:
             if a.delisted:
                 price = "[BKRP]"
             else:
-                price = f"{a.price:6.2f}"
-            print(f"{a.name:32} | {format_text(f"{sym} {a.last_change:5.2f}", [col])}", format_text(f"(Ⱡ{price})", [col]), sparkline(a.history, width = 10))
+                price = f"{a.price:8.2f}"
+            if a.last_change > 0:
+                last_change = f"+{a.last_change:.2f}"
+            else:
+                last_change = f"{a.last_change:8.2f}"
+            print(f"{a.name:32} | {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), sparkline(a.history, width = 10))
         
 class Player:
     pass
