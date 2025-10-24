@@ -1,3 +1,6 @@
+# TODO: Fix Asset and Market classes
+
+
 import sys
 import os
 import time
@@ -85,7 +88,7 @@ def format_text(text: str, codes: list) -> str:  # use ascii escapes natively in
         else:
             raise TypeError(f"List 'codes' should only contain strings or tuples, found {type(code)} instead.")
         
-    return f"{buffer}{text}{colors["reset"]}"
+    return f"{buffer}{text}{colors['reset']}"
 
 def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") -> str: # terminal glitch effect
     # TODO: Add unicode glitch chars? random generation capability? unicode lookalike table? a polish effect
@@ -99,44 +102,41 @@ def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") ->
     return "".join(chars)
 
 GRAPH_CHARS = "▁▂▃▄▅▆▇█"
+
 def sparkline(history, width = 20):
     if not history:
         return ""
     
     vals = history[-width:]
     lo, hi = min(vals), max(vals)
-    if hi - lo < 1e-6:
+    n = len(vals)
+    
+    if hi - lo < 1e-9:
         return "".join(format_text(GRAPH_CHARS[0], ["yellow"]) for _ in vals)
     
     span = hi - lo
-    scaled = [(v - lo) / span for v in vals]
+    scaled = [int((v - lo) / span * (len(GRAPH_CHARS) - 1)) for v in vals]
+    slope = vals[-1] - vals[0]
+    avg_step = sum(abs(vals[i+1] - vals[i]) for i in range(n-1)) / max(1, n-1)
     
-    parts = []
-    for i, s in enumerate(scaled):
-        ch = GRAPH_CHARS[int(s * (len(GRAPH_CHARS) - 1))]
-        if i == 0:
-            color = "yellow"
-        else:
-            diff = vals[i] - vals[i - 1]
-            if diff > 0.1:
-                color = "bright_green"
-            elif diff < -0.1:
-                color = "bright_red"
-            else:
-                color = "yellow"
-        parts.append(format_text(ch, [color]))
-        
+    if abs(slope) < max(0.1, 0,5 * avg_step):
+        col = "yellow"
+    elif slope > 0:
+        col = "bright_green"
+    else:
+        col = "bright_red"
+    
+    parts = [format_text(GRAPH_CHARS[idx], [col]) for idx in scaled]
     return "".join(parts)
 
 # classes
 class Asset: # subclass to be used only under Market
-    def __init__(self, name, base, volatility, trend, phase=None):
+    def __init__(self, name, base, volatility, resilience = 1.0):
         self.name = name      # Name of asset
         self.price = base     # Base (starting) price
-        self.vol = volatility # Standard deviation on random (volatility)
-        self.trend = trend    # Trend directional drift
-        self.phase = phase if phase is not None else random.uniform(0, 6.28) # phase in log function i think?
-        self.t = 0
+        self.volatility = volatility # Standard deviation on random 
+        self.resilience = resilience # how easily it will decay when the market collapses (how much power it consumes)
+        self.trend = random.uniform(-0.05, 0.05) # bias per asset, keeps believable strings of up and down
         self.last_change = 0  # For stock tracker
         self.history = [base]
         self.delisted = False
@@ -145,29 +145,28 @@ class Asset: # subclass to be used only under Market
         self.t += 1
         if self.delisted:
             self.price = 0.0
-            self.history.append(self.price)
             self.last_change = 0.0
             return
-    
-        # oh god here comes the math
-        wave = ( # i DID use AI to generate this one specific block of code, not a math person by any means
-            math.sin(self.t * 0.05 + self.phase) + 0.5 *
-            math.sin(self.t * 0.13 + self.phase * 0.7) + 0.25 *
-            math.sin(self.t * 0.31 + self.phase * 1.3)
-        ) / 1.75 # do Not ask me to explain any of this i do not Know
         
-        # intended to keep actual trends up and down instead of just random each time
+        prev = self.price
         
-        directional = self.trend * stability
-        delta = (wave * self.vol + directional) * stability
+        decay_factor = max(0, 1.0 - stability)
+        sensitivity = decay_factor * (1 / self.resilience)
+        trend_force = self.trend * (0.3 + stability)
+        random_fluct = random.uniform(-self.volatility, self.volatility)
+        delta_pct = trend_force - sensitivity + random_fluct
+        delta = self.price * delta_pct
         
-        old = self.price
-        self.price *= max(0.95, (1 + delta))
-        if self.price < 0.5:
-            self.price = 0.0
-            self.delisted = True
-        self.last_change = self.price - old
+        self.price += delta #airlines (always falling)
+        if self.price < 0:
+            self.price = 0
+        self.last_change = self.price - prev
         self.history.append(self.price)
+        
+        if self.price <= 0.5:
+            self.delisted = True
+    
+        # the sine shit isnt here any more thank god
     
 class Market:
     def __init__(self):
