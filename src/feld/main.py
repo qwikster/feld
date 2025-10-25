@@ -6,7 +6,7 @@ import math
 
 # config
 START_LUX = 10000
-CYCLES_TOTAL = 100
+CYCLES_TOTAL = 50
 TICK_RATE = 2.5
 
 HAB_COST = 50000
@@ -179,24 +179,26 @@ class Market:
         self.cycle = 0
     
     def tick(self):
-        instability = self.cycle / float(CYCLES_TOTAL)
-        stability = 1.0 - instability
+        stability = self.target_stability()
 
         for a in self.assets:
             a.update(stability)
         self.cycle += 1
         
-    def summary(self):
-        instability = self.cycle / float(CYCLES_TOTAL)
-        stability = 1.0 - instability
+    def target_stability(self):
+        t = self.cycle / CYCLES_TOTAL
+        stability = 1.0 - (math.log1p(0.1 * t) / math.log1p(0.1))
+        return max(0.0, min(1.0, stability))
 
+    def summary(self):
+        stability = self.target_stability()
         print(format_text(f"\n[Market Stability: {stability * 100:5.1f}%]   [Cycle {self.cycle}]\n", ["bright_cyan"]))
         
         for a in self.assets:
             col = "red" if a.delisted else "bright_green" if a.last_change > 0 else "bright_red" if a.last_change < 0 else "yellow"
             sym = "╳" if a.delisted else "⌃" if a.last_change > 0 else "⌄" if a.last_change < 0 else "~"
             if a.delisted:
-                price = "[BKRP]"
+                price = " [BKRP] "
             else:
                 price = f"{a.price:8.2f}"
             if a.last_change > 0:
@@ -234,7 +236,7 @@ def main():
         clear()
         market.tick()
         market.summary()
-        time.sleep(0.2)
+        input()
     
 if __name__ == "__main__":
     try:
