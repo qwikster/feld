@@ -36,7 +36,6 @@ def format_text(text: str, codes: list) -> str:  # use ascii escapes natively in
         "strikethrough": "\x1b[9m",
         
         # colors
-        # TODO: These might not work on every terminal, consider switching to program-defined ones?
         "red": "\x1b[31m",
         "yellow": "\x1b[33m",
         "green": "\x1b[32m",
@@ -133,6 +132,7 @@ class Asset: # subclass to be used only under Market
         self.last_change = 0.0  # For stock ticker
         self.history = [self.price]
         self.delisted = False
+        self.t = 0
         
     def update(self, stability: float):
         self.t += 1
@@ -143,18 +143,17 @@ class Asset: # subclass to be used only under Market
             self.last_change = 0.0
             return
 
-        decay_factor = max(0.0, 1.0 - stability) # Add pressure to drop as stability drops
-        sensitivity = decay_factor * (1.0 / self.resilience) # Scale by asset resilience
-        trend_force = self.trend * (0.3 + stability) # Trend up or down so it's not super random
+        decay_factor = (1.0 - stability) ** 2 # Add pressure to drop as stability drops
+        sensitivity = decay_factor * (0.4 / self.resilience) # Scale by asset resilience
+        trend_force = self.trend * (0.6 + 0.4 * stability) # Trend up or down so it's not super random
         random_fluct = random.uniform(-self.volatility, self.volatility) # Standard fluctuations
         burst = 0.0 # occasional burst to keep it alive
-        if random.random() < 0.01 * self.resilience and stability < 0.6:
-            burst = random.uniform(0.02, 0.12) * self.resilience # 
+        if random.random() < 0.1 and stability < 0.6:
+            burst = random.uniform(0.01, 0.12) # 
 
         delta_pct = trend_force - sensitivity + random_fluct + burst
-        delta = self.price * delta_pct 
         
-        self.price += delta
+        self.price = max(0.0, self.price * (1.0 + delta_pct))
         self.last_change = self.price - prev
         self.history.append(self.price)
         
@@ -165,45 +164,33 @@ class Asset: # subclass to be used only under Market
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
-            Asset("Helios Corp.", 8000, -0.02, -0.001), # TODO: Trend should be random maybe?
-            Asset("MacroHard", 1111, 0.0, -0.0005),
-            Asset("Michaelsoft Binbows", 2422, 0.0, -0.1),
-            Asset("Ionic Compound Manufacturers", 3500, 0.0, 0.0),
-            Asset("ClosedAI", 10000, -0.3, -1),
-            Asset("Photonic Semiconductors Limited", 4200, 0.06, -0.002),
-            Asset("Super Earth Warbonds", 6969, -0.04, -0.003),
-            Asset("Lithium Mining Associates", 5000, 0.2, -0.09),
-            Asset("Tux", 10, 0.0, 0.5),
-            Asset("Richard Bored Private Reserve", 1000, -0.1, 0.0),
-            Asset("FICSIT, INC.", 4242, 0.1, -0.1)
+            Asset("Helios Corp.", 8000, 0.02, 1.2),
+            Asset("MacroHard", 1111, 0.015, 1.0),
+            Asset("Michaelsoft Binbows", 2422, 0.01, 0.9),
+            Asset("Ionic Compound Manufacturers", 3500, 0.012, 1.1),
+            Asset("ClosedAI", 10000, 0.3, 0.3),
+            Asset("Photonic Semiconductors Limited", 4200, 0.02, 1.0),
+            Asset("Super Earth Warbonds", 6969, 0.04, 1.3),
+            Asset("Lithium Mining Associates", 5000, 0.025, 0.9),
+            Asset("Tux", 10, 0.1, 1.5),
+            Asset("Richard Bored Private Reserve", 1000, 0.005, 1.2),
+            Asset("FICSIT, INC.", 4242, 0.03, 1.15)
         ]
         self.cycle = 0
-        self.total_initial = sum(a.price for a in self.assets)
-    
-    def target_stability(self):
-        t = self.cycle / CYCLES_TOTAL
-        return max(0.0, 1 - math.log10(1 + 9 * t)) # also AI generated i hate math and knew i wanted something log
     
     def tick(self):
-        stability = self.target_stability()
-        
+        instability = self.cycle / float(CYCLES_TOTAL)
+        stability = 1.0 - instability
+
         for a in self.assets:
             a.update(stability)
-        
-        total = sum(a.price for a in self.assets)
-        target = self.total_initial * stability
-        if False:
-            scale = target / total
-            for a in self.assets:
-                a.price *= scale
-        self.total = total
-        
         self.cycle += 1
         
     def summary(self):
-        stability = self.target_stability()
+        instability = self.cycle / float(CYCLES_TOTAL)
+        stability = 1.0 - instability
+
         print(format_text(f"\n[Market Stability: {stability * 100:5.1f}%]   [Cycle {self.cycle}]\n", ["bright_cyan"]))
-        print("total: ", self.total)
         
         for a in self.assets:
             col = "red" if a.delisted else "bright_green" if a.last_change > 0 else "bright_red" if a.last_change < 0 else "yellow"
