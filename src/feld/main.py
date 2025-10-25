@@ -1,21 +1,18 @@
-# TODO: Fix Asset and Market classes
-
-
 import sys
 import os
 import time
 import random
-import math # you know when you see this that you're about to have a baaaad time
+import math
 
 # config
-START_LUX = 10000 # lux is the currency
+START_LUX = 10000
 CYCLES_TOTAL = 100
 TICK_RATE = 2.5
 
-HAB_COST = 50000 # so 5x to win? might be impossible, playtest needed
-SUPPLY_COST = 500 # x 100, so we have another 50,000 required here
+HAB_COST = 50000
+SUPPLY_COST = 500
 SUPPLY_START = 5
-SUPPLY_CONS = 1 # per cycle, but this might need to be lower
+SUPPLY_CONS = 1
 
 # utility
 def clear(): 
@@ -90,11 +87,8 @@ def format_text(text: str, codes: list) -> str:  # use ascii escapes natively in
         
     return f"{buffer}{text}{colors['reset']}"
 
-def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") -> str: # terminal glitch effect
-    # TODO: Add unicode glitch chars? random generation capability? unicode lookalike table? a polish effect
-    # intensity: percentage of chars to glitch, 0.0 -> 1.0
-    if not 0 <= intensity <= 1:
-        raise ValueError("intensity must be between 0.0 and 1.0")
+def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") -> str:
+    # TODO: Add unicode? lookalike table?
     chars = list(text)
     for i in range(len(chars)):
         if random.random() < intensity:
@@ -102,7 +96,6 @@ def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") ->
     return "".join(chars)
 
 GRAPH_CHARS = "▁▂▃▄▅▆▇█"
-
 def sparkline(history, width = 20):
     if not history:
         return ""
@@ -119,7 +112,7 @@ def sparkline(history, width = 20):
     slope = vals[-1] - vals[0]
     avg_step = sum(abs(vals[i+1] - vals[i]) for i in range(n-1)) / max(1, n-1)
     
-    if abs(slope) < max(0.1, 0,5 * avg_step):
+    if abs(slope) < max(0.1, 0.5 * avg_step):
         col = "yellow"
     elif slope > 0:
         col = "bright_green"
@@ -132,42 +125,43 @@ def sparkline(history, width = 20):
 # classes
 class Asset: # subclass to be used only under Market
     def __init__(self, name, base, volatility, resilience = 1.0):
-        self.name = name      # Name of asset
-        self.price = base     # Base (starting) price
-        self.volatility = volatility # Standard deviation on random 
-        self.resilience = resilience # how easily it will decay when the market collapses (how much power it consumes)
-        self.trend = random.uniform(-0.05, 0.05) # bias per asset, keeps believable strings of up and down
-        self.last_change = 0  # For stock tracker
-        self.history = [base]
+        self.name = name
+        self.price = base
+        self.volatility = volatility # How much asset is allowed to fluctuate
+        self.resilience = float(resilience) if resilience > 0 else 1.0 # how easily it will decay, commonness of bursts
+        self.trend = random.uniform(-0.05, 0.05) # keeps believable strings of up and down
+        self.last_change = 0.0  # For stock ticker
+        self.history = [self.price]
         self.delisted = False
         
     def update(self, stability: float):
         self.t += 1
+        prev = self.price
+
         if self.delisted:
             self.price = 0.0
             self.last_change = 0.0
             return
+
+        decay_factor = max(0.0, 1.0 - stability) # Add pressure to drop as stability drops
+        sensitivity = decay_factor * (1.0 / self.resilience) # Scale by asset resilience
+        trend_force = self.trend * (0.3 + stability) # Trend up or down so it's not super random
+        random_fluct = random.uniform(-self.volatility, self.volatility) # Standard fluctuations
+        burst = 0.0 # occasional burst to keep it alive
+        if random.random() < 0.01 * self.resilience and stability < 0.6:
+            burst = random.uniform(0.02, 0.12) * self.resilience # 
+
+        delta_pct = trend_force - sensitivity + random_fluct + burst
+        delta = self.price * delta_pct 
         
-        prev = self.price
-        
-        decay_factor = max(0, 1.0 - stability)
-        sensitivity = decay_factor * (1 / self.resilience)
-        trend_force = self.trend * (0.3 + stability)
-        random_fluct = random.uniform(-self.volatility, self.volatility)
-        delta_pct = trend_force - sensitivity + random_fluct
-        delta = self.price * delta_pct
-        
-        self.price += delta #airlines (always falling)
-        if self.price < 0:
-            self.price = 0
+        self.price += delta
         self.last_change = self.price - prev
         self.history.append(self.price)
         
         if self.price <= 0.5:
+            self.price = 0.0
             self.delisted = True
-    
-        # the sine shit isnt here any more thank god
-    
+
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
