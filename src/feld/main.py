@@ -1,8 +1,7 @@
-import sys
 import os
 import time
 import random
-import math
+import textwrap
 
 # config
 START_LUX = 10000
@@ -13,6 +12,8 @@ HAB_COST = 50000
 SUPPLY_COST = 500
 SUPPLY_START = 5
 SUPPLY_CONS = 1
+
+temp_babble = ""
 
 # utility
 def clear():
@@ -110,9 +111,6 @@ def sparkline(history, width = 20):
     scaled = [(v - lo) / span for v in vals]
     idxs = [int(s * (len(GRAPH_CHARS) - 1)) for s in scaled]
 
-    mid_val = sum(vals) / n
-    mid_idx = int(((mid_val - lo) / span) * (len(GRAPH_CHARS) - 1))
-
     parts = []
     for i in range(n):
         if i == 0:
@@ -128,7 +126,8 @@ def sparkline(history, width = 20):
         
         ch = GRAPH_CHARS[idxs[i]]
         parts.append(format_text(ch, [col]))
-
+    for _ in range(10 - len(parts)):
+        parts.append(" ")
     return "".join(parts)
 
 # classes
@@ -208,10 +207,18 @@ class Market:
        stability = 1.0 - t ** 2.8
        return max(0.0, min(1.0, stability))
 
-    def summary(self):
-        stability = self.target_stability(self.cycle)
-        print(format_text(f"\n[Market Stability: {stability * 100:5.1f}%]   [Cycle {self.cycle}]\n", ["bright_cyan"]))
-        
+    def summary(self, player):
+        print("┌────────────────────────────────────────────────────────────────────────┐")
+        babble = textwrap.wrap(get_technobabble(), width = 70)
+        for i in babble:
+            print(f"│ {i:70} │")
+        if len(babble) == 1: # so it doesnt "bounce"
+            print("│                                                                        │")
+        print( "╞═══════════╤═════════════╤═══════════════╤═════════════════╤════════════╡")
+        print(f"│ [ Cycle ] │ [ Rations ] │ [ Ⱡ Account ] │ [ Ⱡ Net Worth ] │ ⣏⡉ ⣏⡉ ⡇ ⡏⢱ │\n│ [{self.cycle:^7}] │ [{player.supplies:^9}] │ [{player.lux:^11}] │ [{player.get_worth(self):^13}] │ ⠇  ⠧⠤ ⠧ ⠧⠜ │")
+        print( "╞═══════════╧═════════════╧════════╤══════╧═════════════════╪════════════╡")
+
+
         for a in self.assets:
             col = "red" if a.delisted else "bright_green" if a.last_change > 0 else "bright_red" if a.last_change < 0 else "yellow"
             sym = "╳" if a.delisted else "⌃" if a.last_change > 0 else "⌄" if a.last_change < 0 else "~"
@@ -223,7 +230,7 @@ class Market:
                 last_change = f"+{a.last_change:.2f}"
             else:
                 last_change = f"{a.last_change:8.2f}"
-            print(f"{a.name:32} | {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), sparkline(a.history, width = 10))
+            print(f"│ {a.name:32} │ {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), "│", f"{sparkline(a.history, width = 10)} │")
             
             if False: # DEBUG
                 print(
@@ -233,7 +240,8 @@ class Market:
                     "    tfrce: ", str(round(a.trend_force, 4)).ljust(10),
                     "\nfluct: ", str(round(a.random_fluct, 4)).ljust(10),
                     "    burst: ", str(round(a.burst, 4)).ljust(10), "\n")
-                    
+        print("└──────────────────────────────────┴────────────────────────┴────────────┘")
+
 class Player:
     def __init__(self):
         self.lux = START_LUX
@@ -245,13 +253,14 @@ class Player:
         total = self.lux
         for name, qty in self.holdings.items():
             a = next((x for x in market.assets if x.name == name), None)
-            if a: total += a.price * qty
+            if a:
+                total += a.price * qty
         return total
 
     def consume(self, market):
         self.supplies -= SUPPLY_CONS
         if self.supplies == 1:
-            print(format_text("You only have one bag of supplies left. Better get on that.", ["red"]))
+            get_technobabble(format_text("You only have one bag of supplies left. Better get on that.", ["red"]))
         elif self.supplies == 0:
             game_end(self, market, starved=True)
             self.alive = False
@@ -269,12 +278,45 @@ def handle_sell(player, market, arg):
 def show_status(player, market):
     pass
 
-def get_technobabble(stability):
-    pass
+def get_technobabble(content = None):
+    global temp_babble
+    if content:
+        temp_babble = content
+        return None
+    babble = [
+        "NEWS: ⱠLux market collapse killing thousands of kittens and puppies",
+        "F.E.L.D announcement: Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ",
+        "NEWS: Civil war is brewing, which would only drain our ⱠLux reserves",
+        "NEWS: Habitat 22 is now taking applications via your local F.E.L.D. indentured servitude facility",
+        "NEWS: Man tasked with repairing the Dyson Sphere reportedly burns up in sun",
+        "NEWS: Failed to get today's news",
+        "Did you know? Technobabble like this is just generated off an array",
+        "NWES: That word was misspeled",
+        "NEWS: New AI tech startup ClosedAI eats massive ⱠLux costs, citizens upset",
+        "F.E.L.D notice: Indentured servitude workers will be discharged at the thought of using the bathroom",
+        "NEWS: Invest in the ⱠLux market before it collapses completely, experts claim",
+        "New podcast from the makers of 'The Grindset' reportedly places huge emphasis on roller blading",
+        "News from Earth: Widespread chaos. Citizens are urged to immediately harvest alien artifacts.",
+        "Did I ever tell you about the time when?",
+        "NEWS: Eminem resurrected only for him to reverse the action himself when seeing the state of the world",
+        "PSA: Be advised that software claiming to trade ⱠLux for you likely steal any rare gains",
+        "NEWS: It's never too late to switch to Linux. Going to be a challenge to power it, though.",
+        "F.E.L.D notice: Level 4 executive bathrooms are currently under rennovation.",
+        "NEWS: What did the mildly radioactive raccoon say? A question stumping genius babies worldwide",
+        "F.E.L.D stock ticker: ▁▁▂▂▃▃▄▄▅▅▆▆▇▇██, all day, every day.",
+        "",
+    ]
+    if temp_babble:
+        temp = temp_babble
+        temp_babble = ""
+        return temp
+    else:
+        random.shuffle(babble)
+        return babble[1]
 
 def game_end(player, market, starved = False):
     if starved:
-        print(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
+        get_technobabble(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
 
 # loop
 def main():
@@ -283,8 +325,8 @@ def main():
     while(True):
         clear()
         market.tick()
-        market.summary()
         player.consume(market)
+        market.summary(player)
         input()
     
 if __name__ == "__main__":
@@ -292,3 +334,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print(format_text("test", ["bold", (False, 255, 80, 80), "bold", "underline"]))
+
+
