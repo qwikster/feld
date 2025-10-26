@@ -233,8 +233,31 @@ class Market:
                     "    tfrce: ", str(round(a.trend_force, 4)).ljust(10),
                     "\nfluct: ", str(round(a.random_fluct, 4)).ljust(10),
                     "    burst: ", str(round(a.burst, 4)).ljust(10), "\n")
+                    
 class Player:
-    pass
+    def __init__(self):
+        self.lux = START_LUX
+        self.holdings = { }
+        self.supplies = SUPPLY_START
+        self.alive = True
+
+    def get_worth(self, market):
+        total = self.lux
+        for name, qty in self.holdings.items():
+            a = next((x for x in market.assets if x.name == name), None)
+            if a: total += a.price * qty
+        return total
+
+    def consume(self, market):
+        self.supplies -= SUPPLY_CONS
+        if self.supplies == 1:
+            print(format_text("You only have one bag of supplies left. Better get on that.", ["red"]))
+        elif self.supplies == 0:
+            game_end(self, market, starved=True)
+            self.alive = False
+    
+    def inventory(self, market):
+        pass
 
 # logic
 def handle_buy(player, market, arg):
@@ -243,25 +266,25 @@ def handle_buy(player, market, arg):
 def handle_sell(player, market, arg):
     pass
 
-def handle_supplies(player):
-    pass
-
 def show_status(player, market):
     pass
 
 def get_technobabble(stability):
     pass
 
-def game_end(player, market):
-    pass
+def game_end(player, market, starved = False):
+    if starved:
+        print(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
 
 # loop
 def main():
     market = Market()
+    player = Player()
     while(True):
         clear()
         market.tick()
         market.summary()
+        player.consume(market)
         input()
     
 if __name__ == "__main__":
