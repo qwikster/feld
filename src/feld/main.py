@@ -153,15 +153,23 @@ class Asset: # subclass to be used only under Market
             self.last_change = 0.0
             return
 
+        trend_change = random.uniform(-0.02, 0.02)
+        self.trend += trend_change
+
         decay_factor = (1.0 - stability) ** 2 # Add pressure to drop as stability drops
+        if stability < 0.06:
+            decay_factor = 69.420
         sensitivity = decay_factor * (0.4 / self.resilience) # Scale by asset resilience
         trend_force = self.trend * (0.6 + 0.4 * stability) # Trend up or down so it's not super random
         random_fluct = random.uniform(-self.volatility, self.volatility) # Standard fluctuations
         burst = 0.0 # occasional burst to keep it alive
         if random.random() < 0.1 and stability < 0.6:
-            burst = random.uniform(0.01, 0.12) # 
+            burst = random.uniform(0.01, 0.2) # 
 
         delta_pct = trend_force - sensitivity + random_fluct + burst
+        
+        self.decay_factor, self.sensitivity, self.trend_force, self.random_fluct, self.burst, self.delta_pct = decay_factor, sensitivity, trend_force, random_fluct, burst, delta_pct
+        # for debug, never actually used
         
         self.price = max(0.0, self.price * (1.0 + delta_pct))
         self.last_change = self.price - prev
@@ -216,7 +224,15 @@ class Market:
             else:
                 last_change = f"{a.last_change:8.2f}"
             print(f"{a.name:32} | {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), sparkline(a.history, width = 10))
-        
+            
+            if False: # DEBUG
+                print(
+                    "trend: ", str(round(a.trend, 4)).ljust(10),
+                    "    decay: ", str(round(a.decay_factor, 4)).ljust(10),
+                    "\nsnsvy: ", str(round(a.sensitivity, 4)).ljust(10),
+                    "    tfrce: ", str(round(a.trend_force, 4)).ljust(10),
+                    "\nfluct: ", str(round(a.random_fluct, 4)).ljust(10),
+                    "    burst: ", str(round(a.burst, 4)).ljust(10), "\n")
 class Player:
     pass
 
