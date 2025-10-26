@@ -15,7 +15,7 @@ SUPPLY_START = 5
 SUPPLY_CONS = 1
 
 # utility
-def clear(): 
+def clear():
     os.system("cls" if os.name == "nt" else "clear") # probably better to use escape chars
 
 def format_text(text: str, codes: list) -> str:  # use ascii escapes natively instead of heavy dependent modules
@@ -164,7 +164,7 @@ class Asset: # subclass to be used only under Market
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
-            Asset("Helios Corp.", 8000, 0.02, 1.2),
+            Asset("Helios Corp.", 8000, 0.02, 1.2), # name, base, volatility, resilience
             Asset("MacroHard", 1111, 0.015, 1.0),
             Asset("Michaelsoft Binbows", 2422, 0.01, 0.9),
             Asset("Ionic Compound Manufacturers", 3500, 0.012, 1.1),
@@ -179,19 +179,19 @@ class Market:
         self.cycle = 0
     
     def tick(self):
-        stability = self.target_stability()
+        stability = self.target_stability(self.cycle)
 
         for a in self.assets:
             a.update(stability)
         self.cycle += 1
         
-    def target_stability(self):
-        t = self.cycle / CYCLES_TOTAL
-        stability = 1.0 - (math.log1p(0.1 * t) / math.log1p(0.1))
-        return max(0.0, min(1.0, stability))
+    def target_stability(self, cycle):
+       t = cycle / CYCLES_TOTAL
+       stability = 1.0 - t ** 2.8
+       return max(0.0, min(1.0, stability))
 
     def summary(self):
-        stability = self.target_stability()
+        stability = self.target_stability(self.cycle)
         print(format_text(f"\n[Market Stability: {stability * 100:5.1f}%]   [Cycle {self.cycle}]\n", ["bright_cyan"]))
         
         for a in self.assets:
