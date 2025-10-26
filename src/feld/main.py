@@ -107,18 +107,28 @@ def sparkline(history, width = 20):
         return "".join(format_text(GRAPH_CHARS[0], ["yellow"]) for _ in vals)
     
     span = hi - lo
-    scaled = [int((v - lo) / span * (len(GRAPH_CHARS) - 1)) for v in vals]
-    slope = vals[-1] - vals[0]
-    avg_step = sum(abs(vals[i+1] - vals[i]) for i in range(n-1)) / max(1, n-1)
-    
-    if abs(slope) < max(0.1, 0.5 * avg_step):
-        col = "yellow"
-    elif slope > 0:
-        col = "bright_green"
-    else:
-        col = "bright_red"
-    
-    parts = [format_text(GRAPH_CHARS[idx], [col]) for idx in scaled]
+    scaled = [(v - lo) / span for v in vals]
+    idxs = [int(s * (len(GRAPH_CHARS) - 1)) for s in scaled]
+
+    mid_val = sum(vals) / n
+    mid_idx = int(((mid_val - lo) / span) * (len(GRAPH_CHARS) - 1))
+
+    parts = []
+    for i in range(n):
+        if i == 0:
+            delta = 0
+        else:
+            delta = vals[i] - vals[i - 1]
+        if abs(delta) < 0.05:
+            col = "bright_yellow"
+        elif delta > 0:
+            col = "bright_green"
+        else:
+            col = "bright_red"
+        
+        ch = GRAPH_CHARS[idxs[i]]
+        parts.append(format_text(ch, [col]))
+
     return "".join(parts)
 
 # classes
