@@ -132,7 +132,8 @@ def sparkline(history, width = 20):
 
 # classes
 class Asset: # subclass to be used only under Market
-    def __init__(self, name, base, volatility, resilience = 1.0):
+    def __init__(self, id, name, base, volatility, resilience = 1.0):
+        self.id = id
         self.name = name
         self.price = base
         self.volatility = volatility # How much asset is allowed to fluctuate
@@ -181,17 +182,17 @@ class Asset: # subclass to be used only under Market
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
-            Asset("Helios Corp.", 8000, 0.02, 1.2), # name, base, volatility, resilience
-            Asset("MacroHard", 1111, 0.015, 1.0),
-            Asset("Michaelsoft Binbows", 2422, 0.01, 0.9),
-            Asset("Ionic Compound Manufacturers", 3500, 0.012, 1.1),
-            Asset("ClosedAI", 10000, 0.3, 0.3),
-            Asset("Photonic Semiconductors Limited", 4200, 0.02, 1.0),
-            Asset("Super Earth Warbonds", 6969, 0.04, 1.3),
-            Asset("Lithium Mining Associates", 5000, 0.025, 0.9),
-            Asset("Tux", 10, 0.1, 1.5),
-            Asset("Richard Bored Private Reserve", 1000, 0.005, 1.2),
-            Asset("FICSIT, INC.", 4242, 0.03, 1.15)
+            Asset(1, "Helios Corp.", 8000, 0.02, 1.2), # name, base, volatility, resilience
+            Asset(2, "MacroHard", 1111, 0.015, 1.0),
+            Asset(3, "Michaelsoft Binbows", 2422, 0.01, 0.9),
+            Asset(4, "Ionic Compound Manufacturers", 3500, 0.012, 1.1),
+            Asset(5, "ClosedAI", 10000, 0.3, 0.3),
+            Asset(6, "Photonic Semiconductors Ltd", 4200, 0.02, 1.0),
+            Asset(7, "Super Earth Warbonds", 6969, 0.04, 1.3),
+            Asset(8, "Lithium Mining Associates", 5000, 0.025, 0.9),
+            Asset(9, "Tux", 10, 0.1, 1.5),
+            Asset(10, "Richard Bored Private Reserve", 1000, 0.005, 1.2),
+            Asset(11, "FICSIT, INC.", 4242, 0.03, 1.15)
         ]
         self.cycle = 0
     
@@ -207,6 +208,13 @@ class Market:
        stability = 1.0 - t ** 2.8
        return max(0.0, min(1.0, stability))
 
+    def getname(self, id):
+        # how do i do this lmao
+        for a in self.assets:
+            if a.id == id:
+                return a.name
+        raise ValueError(f"Couldn't find asset of id {id}.")
+    
     def summary(self, player):
         print("┌────────────────────────────────────────────────────────────────────────┐")
         babble = textwrap.wrap(get_technobabble(), width = 70)
@@ -230,7 +238,7 @@ class Market:
                 last_change = f"+{a.last_change:.2f}"
             else:
                 last_change = f"{a.last_change:8.2f}"
-            print(f"│ {a.name:32} │ {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), "│", f"{sparkline(a.history, width = 10)} │")
+            print(f"│ {a.id:2} {a.name:29} │ {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), "│", f"{sparkline(a.history, width = 10)} │")
             
             if False: # DEBUG
                 print(
@@ -240,7 +248,6 @@ class Market:
                     "    tfrce: ", str(round(a.trend_force, 4)).ljust(10),
                     "\nfluct: ", str(round(a.random_fluct, 4)).ljust(10),
                     "    burst: ", str(round(a.burst, 4)).ljust(10), "\n")
-        print("└──────────────────────────────────┴────────────────────────┴────────────┘")
 
 class Player:
     def __init__(self):
@@ -248,11 +255,17 @@ class Player:
         self.holdings = { }
         self.supplies = SUPPLY_START
         self.alive = True
+        
+    def add_asset(self, id, num):
+        if id in self.holdings:
+            self.holdings[id] += num
+        else:
+            self.holdings.setdefault(id, num)
 
     def get_worth(self, market):
         total = self.lux
-        for name, qty in self.holdings.items():
-            a = next((x for x in market.assets if x.name == name), None)
+        for id, qty in self.holdings.items():
+            a = next((x for x in market.assets if x.id == id), None)
             if a:
                 total += a.price * qty
         return total
@@ -260,7 +273,7 @@ class Player:
     def consume(self, market):
         self.supplies -= SUPPLY_CONS
         if self.supplies == 1:
-            get_technobabble(format_text("You only have one bag of supplies left. Better get on that.", ["red"]))
+            get_technobabble(format_text("You only have one bag of supplies left. Better get on that.", ["bright_red"]))
         elif self.supplies == 0:
             game_end(self, market, starved=True)
             self.alive = False
@@ -269,40 +282,31 @@ class Player:
         pass
 
 # logic
-def handle_buy(player, market, arg):
-    pass
-
-def handle_sell(player, market, arg):
-    pass
-
-def show_status(player, market):
-    pass
-
 def get_technobabble(content = None):
     global temp_babble
     if content:
         temp_babble = content
         return None
     babble = [
-        "NEWS: ⱠLux market collapse killing thousands of kittens and puppies",
+        "NEWS: ⱠLux market collapse killing thousands of kittens and puppies.",
         "F.E.L.D announcement: Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ Ⱡ",
-        "NEWS: Civil war is brewing, which would only drain our ⱠLux reserves",
-        "NEWS: Habitat 22 is now taking applications via your local F.E.L.D. indentured servitude facility",
-        "NEWS: Man tasked with repairing the Dyson Sphere reportedly burns up in sun",
-        "NEWS: Failed to get today's news",
-        "Did you know? Technobabble like this is just generated off an array",
-        "NWES: That word was misspeled",
-        "NEWS: New AI tech startup ClosedAI eats massive ⱠLux costs, citizens upset",
-        "F.E.L.D notice: Indentured servitude workers will be discharged at the thought of using the bathroom",
-        "NEWS: Invest in the ⱠLux market before it collapses completely, experts claim",
-        "New podcast from the makers of 'The Grindset' reportedly places huge emphasis on roller blading",
+        "NEWS: Civil war is brewing, which would only drain our ⱠLux reserves.",
+        "NEWS: Habitat 22 is now taking applications via your local F.E.L.D. indentured servitude facility.",
+        "NEWS: Man tasked with repairing the Dyson Sphere reportedly burns up in sun.",
+        "NEWS: Failed to get today's news.",
+        "Did you know? Technobabble like this is just generated off an array.",
+        "NWES: That word was misspeled.",
+        "NEWS: New AI tech startup ClosedAI eats massive ⱠLux costs, citizens upset.",
+        "F.E.L.D notice: Indentured servitude workers will be discharged at the thought of using the bathroom.",
+        "NEWS: Invest in the ⱠLux market before it collapses completely, experts claim.",
+        "New podcast from the makers of 'The Grindset' reportedly places huge emphasis on roller blading.",
         "News from Earth: Widespread chaos. Citizens are urged to immediately harvest alien artifacts.",
         "Did I ever tell you about the time when?",
-        "NEWS: Eminem resurrected only for him to reverse the action himself when seeing the state of the world",
-        "PSA: Be advised that software claiming to trade ⱠLux for you likely steal any rare gains",
+        "NEWS: Eminem resurrected only for him to reverse the action himself when seeing the state of the world.",
+        "PSA: Be advised that software claiming to trade ⱠLux for you likely steal any rare gains.",
         "NEWS: It's never too late to switch to Linux. Going to be a challenge to power it, though.",
         "F.E.L.D notice: Level 4 executive bathrooms are currently under rennovation.",
-        "NEWS: What did the mildly radioactive raccoon say? A question stumping genius babies worldwide",
+        "NEWS: What did the mildly radioactive raccoon say? A question stumping genius babies worldwide.",
         "F.E.L.D stock ticker: ▁▁▂▂▃▃▄▄▅▅▆▆▇▇██, all day, every day.",
         "",
     ]
@@ -317,22 +321,133 @@ def get_technobabble(content = None):
 def game_end(player, market, starved = False):
     if starved:
         get_technobabble(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
+        
+def handle_buy(player, market, arg):
+    clear()
+    args = arg.split(" ")
+    id = args[0]
+    num = args[1]
+    try:
+        print(f"Bought {num} shares of {market.getname(id)}")
+        player.holdings.append(market)
+        return True
+    except ValueError:
+        print(f"Couldn't find the share with the id {id}, try again.")
+        return False
+
+def handle_sell(player, market, arg):
+    pass
+
+def show_help():
+    clear()
+    print("┌───────────────┬───────────────────────┐") # WHAT THE FUCK
+    print("│   Help Menu   │      ⣏⡉ ⣏⡉ ⡇ ⡏⢱       │")
+    print("│    Command    │      ⠇  ⠧⠤ ⠧ ⠧⠜       │")
+    print("├───────────────┼───────────────────────┤")
+    print("│ buy <id> <#>  │ Buy number of assets  │")
+    print("│ sell <id> <#> │ Sell number of assets │")
+    print("│ portfolio     │ View all your assets  │")
+    print("│ rations <#>   │ Buy some supplies     │")
+    print("│ wait [or w]   │ Go get some rest      │")
+    print("│ lore          │ Get the game's lore   │")
+    print("├───────────────┴───────────────────────┤")
+    print("│ Every Cycle (archaic: Day) you, as a  │")
+    print("│ Federal Energy Logistics Division     │")
+    print("│ Indentured Servitude Empoyee (aka as  │")
+    print("│ a FELD.ISE), will trade in the ⱠLux   │")
+    print("│ market. After recent events, the ⱠLux │")
+    print("│ market is falling - companies are now │")
+    print("│ eating power when we cannot produce   │")
+    print("│ any more. Your task is to reach a net │")
+    print("│ worth of Ⱡ50,000 before all assets    │")
+    print("│ go bankrupt. Only then will we (FELD) │")
+    print("│ supply you with a pass to a FELD-HAB  │")
+    print("│ (Habitation and Board) area, ensuring │")
+    print("│ you survive until repairs on Sol Ark. │")
+    print("└───────────────────────────────────────┘")
+    
+def lore():
+    print("┌────────────────────────────────────────────────────────────────────────┐")
+    print("│ In the year 2077, an asteroid known as 529556 Cabeiri was discovered   │")
+    print("│ inside a pocket of dust halfway to Proxima Centauri. Inside, scans     │")
+    print("│ revealed a huge mound of a previously undiscovered stable isotope of   │")
+    print("│ Francium, sparking waves in the scientific community. It appears to be │")
+    print("│ useful in many ways - first and foremost, its uncanny ability to fold  │")
+    print("│ outward as if it were as thin as paper whilst also absorbing solar     │")
+    print("│ energy. Scientists attempted to convince people to switch to panels on │")
+    print("│ their homes, but people are stubborn; instead, we turned to the source.│")
+    print("│                                                                        │")
+    print("│ By 2108, scientists had prototyped and launched an interstellar probe. │")
+    print("│ It was designed to attach to Cabeiri and extract Francium-339 whilst   │")
+    print("│ operating on power harvested from an RTG. The probe, nicknamed Gaia,   │")
+    print("│ then built tiny panels with tiny solar sails that would propel them to │")
+    print("│ our sun and unfold, eventually forming a huge Dyson Sphere around Sol. │")
+    print("│                                                                        │")
+    print("│ In 2112, construction completed, and shipments of physical batteries   │")
+    print("│ (also made from Francium) began periodically coming in from what we    │")
+    print("│ decided to name the Sol Ark. Occasional solar flares forced Gaia to    │")
+    print("│ replace panels, but the RTG retained just enough power to keep the Sol │")
+    print("│ Ark active and producing power.                                        │")
+    print("│                                                                        │")
+    print("│ However, in the year 2195, a massive gash in the power delivery part   │")
+    print("│ of the Sol Ark formed after a particularly large solar flare. The RTG  │")
+    print("│ in Gaia had finally failed, and since we no longer had the exact parts │")
+    print("│ needed to rebuild it, we are forced to send a new probe. Very quickly, │")
+    print("│ a new probe was designed, constructed, and sent - but we were working  │")
+    print("│ with tiny amounts of power (which we call Lux) left. The probe has     │")
+    print("│ around a year left in its journey, so we just need to survive until it │")
+    print("│ can get there and begin producing the very fast moving Ark fragments.  │")
+    print("│                                                                        │")
+    print("│ However, humanity doesn't like making things easy for itself. We had   │")
+    print("│ started trading things with Lux (our power) as a type of currency -    │")
+    print("│ now that no more could be produced, the market (and thus people's      │")
+    print("│ supplies) was collapsing, resulting in the FALL of capitalism. (siege) │")
+    print("│                                                                        │")
+    print("│ Enter the Federal Energy Logistics Divison, or F.E.L.D. Their job was  │")
+    print("│ to mediate the Lux market, but it is now to provide access to the      │")
+    print("│ habitats that the government had created. F.E.L.D realised it needed a │")
+    print("│ source of revenue, so what better way to get it than force potential   │")
+    print("│ Habitat-dwellers to trade stocks for them in hopes that they would     │")
+    print("│ earn a place to live whilst the Sol Ark was repopulated.               │")
+    print("│                                                                        │")     
+    print("│ As a FELD employee, you must secure your ticket in while surviving     │")
+    print("│ the FALL of the market brought on by humanity's foolish decisions.     │")
+    print("└────────────────────────────────────────────────────────────────────────┘")
+    
+
+def input_handler(the, player, market):
+    if the.startswith("lore"):
+        lore()
+        input("[Enter]")
+    elif the.startswith("help"):
+        show_help()
+        input("[Enter]")
+    elif the.startswith("buy"):
+        handle_buy(player, market, the.removeprefix("buy "))
+        input("[Enter]")
+    elif the.startswith("sell"):
+        handle_sell(player, market, the.removeprefix("buy "))
+        input("[Enter]")
 
 # loop
 def main():
     market = Market()
     player = Player()
     while(True):
+        if market.cycle <= 2:
+            get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
         clear()
         market.tick()
         player.consume(market)
         market.summary(player)
-        input()
+        print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
+        print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
+        print("└────────────────────────────────────────────────────────────────────────┘", end = "", flush = True)
+        print("\x1b[1A\x1b[1G│ ", end = "", flush = True                                       )
+        input_handler(input(">"), player, market)
     
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
         print(format_text("test", ["bold", (False, 255, 80, 80), "bold", "underline"]))
-
-
