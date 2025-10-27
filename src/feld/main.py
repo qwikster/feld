@@ -2,6 +2,7 @@ import os
 import time
 import random
 import textwrap
+import sys
 
 # config
 START_LUX = 10000
@@ -221,9 +222,8 @@ class Market:
         if len(babble) == 1: # so it doesnt "bounce"
             print("│                                                                        │")
         print( "╞═══════════╤═════════════╤═══════════════╤═════════════════╤════════════╡")
-        print(f"│ [ Cycle ] │ [ Rations ] │ [ Ⱡ Account ] │ [ Ⱡ Net Worth ] │ ⣏⡉ ⣏⡉ ⡇ ⡏⢱ │\n│ [{self.cycle:^7}] │ [{player.supplies:^9}] │ [{player.lux:^11}] │ [{player.get_worth(self):^13}] │ ⠇  ⠧⠤ ⠧ ⠧⠜ │")
+        print(f"│ [ Cycle ] │ [ Rations ] │ [ Ⱡ Account ] │ [ Ⱡ Net Worth ] │ ⣏⡉ ⣏⡉ ⡇ ⡏⢱ │\n│ [{self.cycle:^7}] │ [{player.supplies:^9}] │ [{round(player.lux):^11}] │ [{player.get_worth(self):^13}] │ ⠇⠀ ⠧⠤ ⠧ ⠧⠜ │")
         print( "╞═══════════╧═════════════╧════════╤══════╧═════════════════╪════════════╡")
-
 
         for a in self.assets:
             col = "red" if a.delisted else "bright_green" if a.last_change > 0 else "bright_red" if a.last_change < 0 else "yellow"
@@ -233,7 +233,7 @@ class Market:
             else:
                 price = f"{a.price:8.2f}"
             if a.last_change > 0:
-                last_change = f"+{a.last_change:.2f}"
+                last_change = f"+{a.last_change:.0f}"
             else:
                 last_change = f"{a.last_change:8.2f}"
             print(f"│ {a.id:2} {a.name:29} │ {format_text(f"{sym} {last_change:>8}", [col])}", format_text(f"(Ⱡ{price})", [col]), "│", f"{sparkline(a.history, width = 10)} │")
@@ -261,7 +261,7 @@ class Player:
             self.holdings.setdefault(id, num)
 
     def get_worth(self, market):
-        total = self.lux
+        total = int(self.lux)
         for id, qty in self.holdings.items():
             a = next((x for x in market.assets if str(x.id) == id), None)
             if a:
@@ -277,7 +277,28 @@ class Player:
             self.alive = False
     
     def inventory(self, market):
-        pass
+        clear()
+        print("┌───────────────────────────────┬─────────────────┐") # WHAT THE FUCK
+        print("│            Player             │   ⣏⡉ ⣏⡉ ⡇⠀ ⡏⢱   │")
+        print("│           Portfolio           │   ⠇⠀ ⠧⠤ ⠧⠤ ⠧⠜   │")
+        print("├───────────────────────────────┼─────────────────┤")
+        if not self.holdings:
+            total_value = 0 
+            print("│ No Assets                     │ ", format_text("Ⱡ0.00", ["bright_red"]), "         │")
+            print("├───────────────────────────────┴─────────────────┤")
+            print(f"│ Portfolio value: Ⱡ{total_value:12.2f}                  │")
+        else:
+            total_value = 0
+            for id, qty in self.holdings.items():
+                asset = next((a for a in market.assets if str(a.id) == id), None)
+                if asset:
+                    value = asset.price * qty
+                    total_value += value
+                    print(f"│ {asset.name:30}│ {qty:3} @ Ⱡ{asset.price:8.2f} │")
+            print("├───────────────────────────────┴─────────────────┤")
+            print(f"│ Portfolio value: Ⱡ{total_value:12.2f}                  │")
+        
+        print("└─────────────────────────────────────────────────┘")
 
 # logic
 def get_technobabble(content = None):
@@ -321,7 +342,6 @@ def game_end(player, market, starved = False):
         get_technobabble(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
         
 def handle_buy(player, market, arg):
-    clear()
     args = arg.strip().split()
     if len(args) < 2:
         print("Usage: buy <#> <id>")
@@ -345,7 +365,8 @@ def handle_buy(player, market, arg):
     
     player.lux -= cost
     player.add_asset(id, num)
-    print(f"Bought {num} shares of {asset.name} for Ⱡ{cost:.2f}")
+    print(f"\n\nBought {num} shares of {asset.name} for Ⱡ{cost:.2f}")
+    return True
 
 def handle_sell(player, market, arg):
     args = arg.split(" ")
@@ -364,16 +385,28 @@ def handle_sell(player, market, arg):
             if player.holdings[owned_id] == 0:
                 del player.holdings[owned_id]
             player.lux += a.price * num
-            print(f"Sold {num} shares of {a.name} for Ⱡ{a.price * num:.2f}")
+            print(f"\n\nSold {num} shares of {a.name} for Ⱡ{a.price * num:.2f}")
             return True
     print("You don't own that asset.")
     return False
 
+def handle_rations(player, arg):
+    args = arg.strip().split()
+    num = abs(int(args[0])) if args else 1
+    cost = SUPPLY_COST * num
+    if player.lux < cost:
+        print("\n\nNot enough Lux to buy rations")
+        return False
+    player.lux -= cost
+    player.supplies += num
+    print(f"Purchased {num} rations for Ⱡ{cost}.")
+    return True
+
 def show_help():
     clear()
     print("┌───────────────┬───────────────────────┐") # WHAT THE FUCK
-    print("│   Help Menu   │      ⣏⡉ ⣏⡉ ⡇ ⡏⢱       │")
-    print("│    Command    │      ⠇  ⠧⠤ ⠧ ⠧⠜       │")
+    print("│   Help Menu   │      ⣏⡉ ⣏⡉ ⡇⠀ ⡏⢱      │")
+    print("│    Command    │      ⠇⠀ ⠧⠤ ⠧⠤ ⠧⠜      │")
     print("├───────────────┼───────────────────────┤")
     print("│ buy <#> <id>  │ Buy number of assets  │")
     print("│ sell <#> <id> │ Sell number of assets │")
@@ -451,6 +484,9 @@ def input_handler(the, player, market):
     if the.startswith("lore"):
         lore()
         input("[Enter]")
+    elif the.startswith("exit") or the.startswith("quit"):
+        print("\n\n")
+        sys.exit(0)
     elif the.startswith("help"):
         show_help()
         input("[Enter]")
@@ -458,10 +494,17 @@ def input_handler(the, player, market):
         status = handle_buy(player, market, the.removeprefix("buy "))
         input("[Enter]")
     elif the.startswith("sell"):
-        status = handle_sell(player, market, the.removeprefix("buy "))
+        status = handle_sell(player, market, the.removeprefix("sell "))
         input("[Enter]")
     elif the.startswith("wait") or the == "w":
         status = True
+    elif the.startswith("inv") or the.startswith("portfolio"):
+        player.inventory(market)
+        input("[Enter]")
+        status = False
+    else:
+        print("\n\nI don't recognize that command.")
+        input("[Enter]")
     if status:
         return True
     else:
@@ -471,11 +514,11 @@ def input_handler(the, player, market):
 def main():
     market = Market()
     player = Player()
+    market.tick()
     while(True):
         if market.cycle <= 1:
             get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
         clear()
-        print(player.holdings)
         market.summary(player)
         print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
         print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
@@ -490,4 +533,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(format_text("test", ["bold", (False, 255, 80, 80), "bold", "underline"]))
+        print("\n\n")
+        sys.exit(0)
