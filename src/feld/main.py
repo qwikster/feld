@@ -1,4 +1,3 @@
-import os
 import time
 import random
 import textwrap
@@ -8,16 +7,16 @@ import sys
 START_LUX = 10000
 CYCLES_TOTAL = 50
 
-HAB_COST = 50000
+HAB_COST = 40000
 SUPPLY_COST = 500
-SUPPLY_START = 20
+SUPPLY_START = 5
 SUPPLY_CONS = 1
 
 temp_babble = ""
 
 # utility
 def clear():
-    os.system("cls" if os.name == "nt" else "clear") # probably better to use escape chars
+    print("\x1b[2J\x1b[H", end="")
 
 def format_text(text: str, codes: list) -> str:  # use ascii escapes natively instead of heavy dependent modules
     # codes: list of either color code or a tuple with (background: bool, int, int, int)
@@ -86,14 +85,6 @@ def format_text(text: str, codes: list) -> str:  # use ascii escapes natively in
             raise TypeError(f"List 'codes' should only contain strings or tuples, found {type(code)} instead.")
         
     return f"{buffer}{text}{colors['reset']}"
-
-def glitch(text: str, intensity: float, glitch_characters: str = "#$@%&^/?X") -> str:
-    # TODO: Add unicode? lookalike table?
-    chars = list(text)
-    for i in range(len(chars)):
-        if random.random() < intensity:
-            chars[i] = random.choice(glitch_characters)
-    return "".join(chars)
 
 GRAPH_CHARS = "▁▂▃▄▅▆▇█"
 def sparkline(history, width = 20):
@@ -338,8 +329,25 @@ def get_technobabble(content = None):
         return babble[1]
 
 def game_end(player, market, starved = False):
+    clear()
     if starved:
-        get_technobabble(format_text("You've run out of supplies and perished.", ["red"])) # EXPAND, OBVIOUSLY 
+        print("┌──────────────────────────────────────────────┐")
+        print("│ ", format_text("You have run out of supplies and perished. ", ["bright_red"]), "│")
+        print("└──────────────────────────────────────────────┘")
+    else:
+        worth = player.get_worth(market)
+        if worth >= HAB_COST and player.supplies >= 0:
+            ending_sequence()
+        else:
+            print("┌──────────────────────────────────────────────┐")
+            print("│ You survived until the market collapsed in   │")
+            print("│ its entirety, but didn't have enough Lux.    │")
+            print("│ F.E.L.D EMPLOYEE ID348255J TERMINATED<<      │")
+            print("└──────────────────────────────────────────────┘")
+    sys.exit(0)
+
+def ending_sequence():
+    pass
         
 def handle_buy(player, market, arg):
     args = arg.strip().split()
@@ -502,8 +510,11 @@ def input_handler(the, player, market):
         player.inventory(market)
         input("[Enter]")
         status = False
+    elif the.startswith("rations"):
+        status = handle_rations(player, the.removeprefix("rations ").strip())
+        input("[Enter]")
     else:
-        print("\n\nI don't recognize that command.")
+        print("\n\nI don't recognize that command. Try 'help'?")
         input("[Enter]")
     if status:
         return True
@@ -528,6 +539,8 @@ def main():
         if status: # iterate if they did something that modifies player (takes time)
             market.tick()
             player.consume(market)
+            if market.cycle > CYCLES_TOTAL:
+                game_end(player, market)
     
 if __name__ == "__main__":
     try:
