@@ -6,11 +6,10 @@ import textwrap
 # config
 START_LUX = 10000
 CYCLES_TOTAL = 50
-TICK_RATE = 2.5
 
 HAB_COST = 50000
 SUPPLY_COST = 500
-SUPPLY_START = 5
+SUPPLY_START = 20
 SUPPLY_CONS = 1
 
 temp_babble = ""
@@ -208,12 +207,11 @@ class Market:
        stability = 1.0 - t ** 2.8
        return max(0.0, min(1.0, stability))
 
-    def getname(self, id):
-        # how do i do this lmao
+    def getname(self, id): # surely there's a better way to do this
         for a in self.assets:
-            if a.id == id:
+            if str(a.id) == id: # it was an integer
                 return a.name
-        raise ValueError(f"Couldn't find asset of id {id}.")
+        raise ValueError
     
     def summary(self, player):
         print("┌────────────────────────────────────────────────────────────────────────┐")
@@ -265,10 +263,10 @@ class Player:
     def get_worth(self, market):
         total = self.lux
         for id, qty in self.holdings.items():
-            a = next((x for x in market.assets if x.id == id), None)
+            a = next((x for x in market.assets if str(x.id) == id), None)
             if a:
-                total += a.price * qty
-        return total
+                total += a.price * int(qty)
+        return round(total)
 
     def consume(self, market):
         self.supplies -= SUPPLY_CONS
@@ -324,19 +322,52 @@ def game_end(player, market, starved = False):
         
 def handle_buy(player, market, arg):
     clear()
-    args = arg.split(" ")
-    id = args[0]
-    num = args[1]
-    try:
-        print(f"Bought {num} shares of {market.getname(id)}")
-        player.holdings.append(market)
-        return True
-    except ValueError:
-        print(f"Couldn't find the share with the id {id}, try again.")
+    args = arg.strip().split()
+    if len(args) < 2:
+        print("Usage: buy <#> <id>")
         return False
+    try:
+        num = abs(int(args[0]))
+        id = args[1]
+    except ValueError:
+        print("Invalid number, try again.")
+        return False
+    
+    asset = next((a for a in market.assets if str(a.id) == id and not a.delisted), None)
+    if not asset:
+        print("Asset either bankrupt or doesn't exist.")
+        return False
+    
+    cost = asset.price * num
+    if player.lux < cost:
+        print("You don't have enough ⱠLux.")
+        return False
+    
+    player.lux -= cost
+    player.add_asset(id, num)
+    print(f"Bought {num} shares of {asset.name} for Ⱡ{cost:.2f}")
 
 def handle_sell(player, market, arg):
-    pass
+    args = arg.split(" ")
+    id, num = args[1], int(args[0])
+    num = abs(num)
+    for owned_id in list(player.holdings.keys()):
+        if str(owned_id) == id:
+            a = next((x for x in market.assets if str(x.id) == id), None)
+            if not a:
+                print("Asset not found")
+                return False
+            if player.holdings[owned_id] < num:
+                print("Not enough shares to sell.")
+                return False
+            player.holdings[owned_id] -= num
+            if player.holdings[owned_id] == 0:
+                del player.holdings[owned_id]
+            player.lux += a.price * num
+            print(f"Sold {num} shares of {a.name} for Ⱡ{a.price * num:.2f}")
+            return True
+    print("You don't own that asset.")
+    return False
 
 def show_help():
     clear()
@@ -344,8 +375,8 @@ def show_help():
     print("│   Help Menu   │      ⣏⡉ ⣏⡉ ⡇ ⡏⢱       │")
     print("│    Command    │      ⠇  ⠧⠤ ⠧ ⠧⠜       │")
     print("├───────────────┼───────────────────────┤")
-    print("│ buy <id> <#>  │ Buy number of assets  │")
-    print("│ sell <id> <#> │ Sell number of assets │")
+    print("│ buy <#> <id>  │ Buy number of assets  │")
+    print("│ sell <#> <id> │ Sell number of assets │")
     print("│ portfolio     │ View all your assets  │")
     print("│ rations <#>   │ Buy some supplies     │")
     print("│ wait [or w]   │ Go get some rest      │")
@@ -413,9 +444,10 @@ def lore():
     print("│ As a FELD employee, you must secure your ticket in while surviving     │")
     print("│ the FALL of the market brought on by humanity's foolish decisions.     │")
     print("└────────────────────────────────────────────────────────────────────────┘")
-    
 
 def input_handler(the, player, market):
+    the = the.lower()
+    status = False
     if the.startswith("lore"):
         lore()
         input("[Enter]")
@@ -423,28 +455,36 @@ def input_handler(the, player, market):
         show_help()
         input("[Enter]")
     elif the.startswith("buy"):
-        handle_buy(player, market, the.removeprefix("buy "))
+        status = handle_buy(player, market, the.removeprefix("buy "))
         input("[Enter]")
     elif the.startswith("sell"):
-        handle_sell(player, market, the.removeprefix("buy "))
+        status = handle_sell(player, market, the.removeprefix("buy "))
         input("[Enter]")
+    elif the.startswith("wait") or the == "w":
+        status = True
+    if status:
+        return True
+    else:
+        return False
 
 # loop
 def main():
     market = Market()
     player = Player()
     while(True):
-        if market.cycle <= 2:
+        if market.cycle <= 1:
             get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
         clear()
-        market.tick()
-        player.consume(market)
+        print(player.holdings)
         market.summary(player)
         print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
         print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
         print("└────────────────────────────────────────────────────────────────────────┘", end = "", flush = True)
-        print("\x1b[1A\x1b[1G│ ", end = "", flush = True                                       )
-        input_handler(input(">"), player, market)
+        print("\x1b[1A\x1b[1G│ ", end = "", flush = True)
+        status = input_handler(input(">"), player, market)
+        if status: # iterate if they did something that modifies player (takes time)
+            market.tick()
+            player.consume(market)
     
 if __name__ == "__main__":
     try:
