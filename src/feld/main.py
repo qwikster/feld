@@ -390,23 +390,23 @@ def game_end(player, market, starved = False):
 def handle_buy(player, market, arg):
     args = arg.strip().split()
     if len(args) < 2:
-        print("Usage: buy <#> <id>")
+        print("\n\nUsage: buy <#> <id>")
         return False
     try:
         num = abs(int(args[0]))
         id = args[1]
     except ValueError:
-        print("Invalid number, try again.")
+        print("\n\nInvalid number, try again.")
         return False
     
     asset = next((a for a in market.assets if str(a.id) == id and not a.delisted), None)
     if not asset:
-        print("Asset either bankrupt or doesn't exist.")
+        print("\n\nAsset either bankrupt or doesn't exist.")
         return False
     
     cost = asset.price * num
     if player.lux < cost:
-        print("You don't have enough ⱠLux.")
+        print("\n\nYou don't have enough ⱠLux.")
         return False
     
     player.lux -= cost
@@ -416,16 +416,23 @@ def handle_buy(player, market, arg):
 
 def handle_sell(player, market, arg):
     args = arg.strip().split()
-    id, num = args[1], int(args[0])
-    num = abs(num)
+    if len(args) < 2:
+        print("\n\nUsage: sell <#> <id>")
+        return False
+    try:
+        id, num = args[1], abs(int(args[0]))
+    except ValueError:
+        print("\n\nInvalid number, try again.")
+        return False
+    
     for owned_id in list(player.holdings.keys()):
         if str(owned_id) == id:
             a = next((x for x in market.assets if str(x.id) == id), None)
             if not a:
-                print("Asset not found")
+                print("\n\nAsset not found")
                 return False
             if player.holdings[owned_id] < num:
-                print("Not enough shares to sell.")
+                print("\n\nNot enough shares to sell.")
                 return False
             player.holdings[owned_id] -= num
             if player.holdings[owned_id] == 0:
@@ -433,7 +440,7 @@ def handle_sell(player, market, arg):
             player.lux += a.price * num
             print(f"\n\nSold {num} shares of {a.name} for Ⱡ{a.price * num:.2f}")
             return True
-    print("You don't own that asset.")
+    print("\n\nYou don't own that asset.")
     return False
 
 def handle_rations(player, arg):
@@ -445,7 +452,7 @@ def handle_rations(player, arg):
         return False
     player.lux -= cost
     player.supplies += num
-    print(f"Purchased {num} rations for Ⱡ{cost}.")
+    print(f"\n\nPurchased {num} rations for Ⱡ{cost}.")
     return True
 
 def show_help():
@@ -564,21 +571,25 @@ def main():
     market = Market()
     player = Player()
     market.tick()
-    while(True):
-        if market.cycle <= 1:
-            get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
-        clear()
-        if market.cycle >= CYCLES_TOTAL:
-            game_end(player, market)
-        market.summary(player)
-        print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
-        print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
-        print("└────────────────────────────────────────────────────────────────────────┘", end = "", flush = True)
-        print("\x1b[1A\x1b[1G│ ", end = "", flush = True)
-        status = input_handler(input(">"), player, market)
-        if status: # iterate if they did something that modifies player (takes time)
-            market.tick()
-            player.consume(market)
+    try:
+        while(True):
+            if market.cycle <= 1:
+                get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
+            clear()
+            if market.cycle >= CYCLES_TOTAL:
+                game_end(player, market)
+            market.summary(player)
+            print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
+            print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
+            print("└────────────────────────────────────────────────────────────────────────┘", end = "", flush = True)
+            print("\x1b[1A\x1b[1G│ ", end = "", flush = True)
+            status = input_handler(input(">"), player, market)
+            if status: # iterate if they did something that modifies player (takes time)
+                market.tick()
+                player.consume(market)
+    except KeyboardInterrupt:
+        print("\n\n")
+        sys.exit(0)
     
 if __name__ == "__main__":
     try:
