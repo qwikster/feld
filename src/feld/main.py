@@ -1,4 +1,3 @@
-import time
 import random
 import textwrap
 import sys
@@ -8,7 +7,7 @@ START_LUX = 10000
 CYCLES_TOTAL = 50
 
 HAB_COST = 40000
-SUPPLY_COST = 500
+SUPPLY_COST = 200
 SUPPLY_START = 5
 SUPPLY_CONS = 1
 
@@ -148,8 +147,6 @@ class Asset: # subclass to be used only under Market
         self.trend += trend_change
 
         decay_factor = (1.0 - stability) ** 2 # Add pressure to drop as stability drops
-        if stability < 0.06:
-            decay_factor = 69.420
         sensitivity = decay_factor * (0.4 / self.resilience) # Scale by asset resilience
         trend_force = self.trend * (0.6 + 0.4 * stability) # Trend up or down so it's not super random
         random_fluct = random.uniform(-self.volatility, self.volatility) # Standard fluctuations
@@ -173,17 +170,17 @@ class Asset: # subclass to be used only under Market
 class Market:
     def __init__(self):
         self.assets = [ # TODO: Add json parsing here
-            Asset(1, "Helios Corp.", 8000, 0.02, 1.2), # name, base, volatility, resilience
-            Asset(2, "MacroHard", 1111, 0.015, 1.0),
-            Asset(3, "Michaelsoft Binbows", 2422, 0.01, 0.9),
-            Asset(4, "Ionic Compound Manufacturers", 3500, 0.012, 1.1),
-            Asset(5, "ClosedAI", 10000, 0.3, 0.3),
-            Asset(6, "Photonic Semiconductors Ltd", 4200, 0.02, 1.0),
-            Asset(7, "Super Earth Warbonds", 6969, 0.04, 1.3),
-            Asset(8, "Lithium Mining Associates", 5000, 0.025, 0.9),
+            Asset(1, "Helios Corp.", 800, 0.02, 1.2), # name, base, volatility, resilience
+            Asset(2, "MacroHard", 111, 0.015, 1.0),
+            Asset(3, "Michaelsoft Binbows", 242, 0.01, 0.9),
+            Asset(4, "Ionic Compound Manufacturers", 350, 0.012, 1.1),
+            Asset(5, "ClosedAI", 1000, 0.3, 0.3),
+            Asset(6, "Photonic Semiconductors Ltd", 420, 0.02, 1.0),
+            Asset(7, "Super Earth Warbonds", 696, 0.04, 1.3),
+            Asset(8, "Lithium Mining Associates", 500, 0.025, 0.9),
             Asset(9, "Tux", 10, 0.1, 1.5),
-            Asset(10, "Richard Bored Private Reserve", 1000, 0.005, 1.2),
-            Asset(11, "FICSIT, INC.", 4242, 0.03, 1.15)
+            Asset(10, "Richard Bored Private Reserve", 100, 0.005, 1.2),
+            Asset(11, "FICSIT, INC.", 424, 0.03, 1.15)
         ]
         self.cycle = 0
     
@@ -325,8 +322,7 @@ def get_technobabble(content = None):
         temp_babble = ""
         return temp
     else:
-        random.shuffle(babble)
-        return babble[1]
+        return random.choice(babble)
 
 def game_end(player, market, starved = False):
     clear()
@@ -334,21 +330,63 @@ def game_end(player, market, starved = False):
         print("┌──────────────────────────────────────────────┐")
         print("│ ", format_text("You have run out of supplies and perished. ", ["bright_red"]), "│")
         print("└──────────────────────────────────────────────┘")
+        print(format_text(f"Final balance: Ⱡ{round(player.lux)}", ["bright_green"]))
     else:
         worth = player.get_worth(market)
         if worth >= HAB_COST and player.supplies >= 0:
-            ending_sequence()
+            print("\n\n\n┌────────────────────────────────────────────────────────────────────────┐")
+            print("│                    F.E.L.D-HAB 22 LOG ENTRY #149215                    │")
+            print("├────────────────────────────────────────────────────────────────────────┤")
+            print("│ 3 years after Sol Ark collapse, HAB day 88. Log begins:                │")
+            print("│                                                                        │")
+            print("│ The Gaia probe, having finally reached its destination, springs to     │")
+            print("│ life and begins harvesting Francium from the asteroid, far from Terra. │")
+            print("│ Repeatedly, it etches patterns into and folds the metal into impossibly│")
+            print("│ tiny sheets, all with a tiny circuit board and battery. They unfurl    │")
+            print("│ their metallic wings and catch light from the now somewhat nearby star │")
+            print("│ Proxima Centauri, reaching incredible speeds in a matter of seconds    │")
+            print("│ thanks to the tiny mass of the Dyson fragments.                        │")
+            print("│                                                                        │")
+            print("│ Magnetic fields are generated with the last power from those last few  │")
+            print("│ fragments of the Sol Ark, drawing new parts into place as they whirr   │")
+            print("│ to life with the solar energy imparted upon them. Hundreds of spheres  │")
+            print("│ containing batteries hurl towards Earth's atmosphere, staying solid as │")
+            print("│ they impact in all the many Ark-catching facilities on the surface of  │")
+            print("│ our planet. The power is discharged from the cosmic batteries, sent    │")
+            print("│ immediately into the electrical grid, and towards factories and homes  │")
+            print("│ across the globe.                                                      │")
+            print("│                                                                        │")
+            print("│ A cheer erupts inside Hab 22 as you watch the final piece of the Sol   │")
+            print("│ Ark snap into place and light up with power. You can't hear any others │")
+            print("│ but you know that around the world, the rest of the hundreds of Habs   │")
+            print("│ just lit up with the same unconditional happiness.                     │")
+            print("│                                                                        │")
+            print("│ Going back to your life before the stay in the Habs is, to say the     │")
+            print("│ least, incredibly difficult. Frozen dead bodies litter the world, too  │")
+            print("│ poor to survive until after the Ark was rebuilt. Only about a billion  │")
+            print("│ humans remained - a huge step back, but since we had only the best of  │")
+            print("│ humans left, it ended up as a net positive for humanity. Companies of  │")
+            print("│ liars and swindlers never made it back up, and capitalism was all but  │")
+            print("│ fixed, finally relying only on honest human beings. Over time, it's    │")
+            print("│ certain that it will decay, but it is our job to build a new society   │")
+            print("│ to keep our future bright.                                             │")
+            print("│                                                                        │")
+            print("│ Log Ends.                                                              │")
+            print("├────────────────────────────────────────────────────────────────────────┤")
+            print(f"│ Final Lux reserves: {format_text(f'{player.lux:.2f}', ['bright_yellow']):<20}                                        │")
+            print(f"│ Total net worth: {format_text(str(round(player.get_worth(market))), ['bright_cyan']):<23}                                        │")
+            print(f"│ Remaining supplies: {format_text(str(player.supplies), ['bright_green']):<20}                                        │")
+            print("└────────────────────────────────────────────────────────────────────────┘")
+            
         else:
             print("┌──────────────────────────────────────────────┐")
             print("│ You survived until the market collapsed in   │")
             print("│ its entirety, but didn't have enough Lux.    │")
             print("│ F.E.L.D EMPLOYEE ID348255J TERMINATED<<      │")
             print("└──────────────────────────────────────────────┘")
+            print(format_text(f"Final balance: Ⱡ{round(player.lux)}", ["bright_green"]))
     sys.exit(0)
 
-def ending_sequence():
-    pass
-        
 def handle_buy(player, market, arg):
     args = arg.strip().split()
     if len(args) < 2:
@@ -377,7 +415,7 @@ def handle_buy(player, market, arg):
     return True
 
 def handle_sell(player, market, arg):
-    args = arg.split(" ")
+    args = arg.strip().split()
     id, num = args[1], int(args[0])
     num = abs(num)
     for owned_id in list(player.holdings.keys()):
@@ -530,6 +568,8 @@ def main():
         if market.cycle <= 1:
             get_technobabble("F.E.L.D notice: Try entering \"help\" if you feel lost.")
         clear()
+        if market.cycle >= CYCLES_TOTAL:
+            game_end(player, market)
         market.summary(player)
         print("╞══════════════════════════════════╧════════════════════════╧════════════╡")
         print("│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│", flush = True)
@@ -539,8 +579,6 @@ def main():
         if status: # iterate if they did something that modifies player (takes time)
             market.tick()
             player.consume(market)
-            if market.cycle > CYCLES_TOTAL:
-                game_end(player, market)
     
 if __name__ == "__main__":
     try:
