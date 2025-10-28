@@ -9,6 +9,9 @@ A command-line trading simulation game written in Python for Week 8 of Hack Club
 ## Usage
 Download `src/feld/main.py` and run it with `python main.py`. If you're in a hurry or want virtualization, you may install the game via `pip install feld`.
 
+## Demo
+https://github.com/user-attachments/assets/8dc30ff9-2304-4e92-96b3-57c8cf5a8e0e
+
 ## Lore
 You don't need to read this, but it helps understand the game. Also accessible in-game via the `lore` command.
 
